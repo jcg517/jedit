@@ -1,0 +1,1 @@
+Jedit - A personal learning project to build a basic win32 texteditor in Rust. The goals are learn about text editor applications and the datastructures they implement, to gain experience in low-level win32 programming without any gui abstraction libraries, designing software in the Command Pattern, as well learning Rust.
