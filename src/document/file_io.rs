@@ -1,25 +1,26 @@
-use crate::document::text_document::TextDocument;
 use std::path::Path;
-use std::fs::File;
-use std::io::{Read, Error};
+use std::fs;
+use std::io::Read;
+use std::error::Error;
+use crate::document::text_document::TextDocument;
 
-pub fn load_from_file(path: &Path) -> Result<String, Error> {
-    // TODO: add checks for file types
-    println!("Loading document from file: {}", path.display());
-
-    let mut file = std::fs::OpenOptions::new()
+/// Loads the content of a file into a string using OpenOptions.
+/// Creates the file if it doesn't exist.
+pub fn load(path: &Path) -> Result<String, Box<dyn Error>> {
+    let mut file = fs::OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)
         .open(path)?;
 
-    let mut data = String::new();
-    file.read_to_string(&mut data)?;
+    let mut content = String::new();
+    file.read_to_string(&mut content)?;
 
-    Ok(data)
+    Ok(content)
 }
 
-pub fn save_to_file(text_buffer: TextDocument, path: &str) {
-    // Todo: serialize document and write to disk
-    println!("Saving document to file: {}", path);
+/// Saves the content of the TextDocument to the specified path.
+pub fn save(doc: &TextDocument, path: &Path) -> Result<(), Box<dyn Error>> {
+    fs::write(path, doc.get_content())?; 
+    Ok(())
 }

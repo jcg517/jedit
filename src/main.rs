@@ -1,14 +1,32 @@
-// src/main.rs
 mod ui;
 mod document;
 
-use std::path::Path;
-use windows::core::*;
-use ui::main_window::MainWindow;
+use windows::{
+    core::{Result, HSTRING},
+    Win32::{
+        Foundation::E_FAIL,
+        UI::WindowsAndMessaging::{DispatchMessageW, GetMessageW, TranslateMessage, MSG},
+    },
+};
 
-fn main() -> Result<()> {
-    // Initialize the MainWindow from a file path.
-    let main_window = MainWindow::new(Path::new("test.txt"))?;
-    main_window.run();
+use crate::ui::editor_view::*; 
+use crate::ui::main_window::*; 
+
+fn main() -> Result<()> { // Revert return type to windows::core::Result<()>
+    // Initialize window classes
+    init_main_window()?;
+    init_editor_view().map_err(|e| windows::core::Error::new(E_FAIL, format!("init_editor_view failed: {}", e)))?;
+
+    // Create the main window
+    let _hwnd_main = create_main_window().map_err(|e| windows::core::Error::new(E_FAIL, format!("create_main_window failed: {}", e)))?;
+
+    // Run the message loop for main window
+    unsafe {
+        let mut msg = MSG::default();
+        while GetMessageW(&mut msg, None, 0, 0).into() {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+    }
     Ok(())
 }

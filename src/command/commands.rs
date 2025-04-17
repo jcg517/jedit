@@ -1,4 +1,4 @@
-use crate::document::text_buffer::TextDocument;
+use crate::document::text_document::TextDocument;
 
 pub trait Command {
     pub fn execute(&self, data: &mut TextDocument);
@@ -18,9 +18,8 @@ impl InsertCommand {
 }
 
 impl Command for InsertCommand {
-    fn execute(&mut self, data: &mut TextDocument) {
+    fn execute(&self, data: &mut TextDocument) {
         todo!();
-        println!("InsertCommand executed.");
     }
 }
 
@@ -30,13 +29,12 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn new(&mut self, pos: usize, len: usize) -> Self {
+    pub fn new(pos: usize, len: usize) -> Self {
         DeleteCommand { pos, len }
     }
 }
 impl Command for DeleteCommand {
-    fn execute(&mut self, data: &mut TextDocument) {
+    fn execute(&self, data: &mut TextDocument) {
         todo!();
-        println!("DeleteCommand executed.")
     }
 }

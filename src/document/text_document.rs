@@ -1,72 +1,100 @@
-use std::str::FromStr;
 use std::{error::Error, path::Path};
 use crate::document::file_io;
 
 pub struct TextDocument {
-    line_offsets: Vec<u64>,
-    text_buffer: String,  // For now, just hold data as as a string
+    line_offsets: Vec<usize>,
+    text_buffer: String,
 }
 
 impl TextDocument {
 
-    /// Process the raw text data and producing an offset mapping of all new lines for easy retrieval
-    fn parse_lines(data: &String) -> Result<Vec<u64>, Box<dyn Error + Send + Sync>> {
-        let mut line_offsets = vec![0];
-        let mut iter = data.char_indices().peekable();
-        while let Some((i, ch)) = iter.next() {
-            if ch == '\r' {
-                // Check if the next character is a newline, indicating a CRLF sequence.
-                if let Some(&(j, next_ch)) = iter.peek() {
-                    if next_ch == '\n' {
-                        iter.next();  // Consume the newline as part of the CRLF combination.
-                        line_offsets.push((j + 1) as u64);
-                        continue;
-                    }
-                }
-                // If not followed by '\n', treat the carriage return on its own as a newline.
-                line_offsets.push((i + 1) as u64);
-            } else if ch == '\n' {
-                line_offsets.push((i + 1) as u64);
+    /// Creates a new, empty TextDocument.
+    pub fn new() -> Self {
+        TextDocument {
+            line_offsets: vec![0],
+            text_buffer: String::new(),
+        }
+    }
+
+    /// Recalculates line offsets based on the current text_buffer.
+    /// Assumes line_offsets starts with `vec![0]`.
+    fn init_line_offsets(&mut self) -> Result<(), Box<dyn Error>> {
+        self.line_offsets.truncate(1);
+
+        for (i, ch) in self.text_buffer.char_indices() {
+            if ch == '\n' {
+                // Record the offset *after* the newline character
+                self.line_offsets.push(i + 1);
             }
         }
-        
-        Ok(line_offsets)
+        // Note: Doesn't explicitly handle files without trailing newline,
+        // but getline logic correctly handles the last line.
+        Ok(())
     }
-    
-    pub fn new(path: &Path) -> Result<Self, Box<dyn Error + Send + Sync>> {
-        // Attempt to open and load the file into text buffer
-        let text_buffer = file_io::load_from_file(path)?;
-        let line_offsets = Self::parse_lines(&text_buffer)?;
 
-        Ok(TextDocument { line_offsets, text_buffer })
+    /// Initializes the document by loading content from a file path.
+    /// Clears existing content before loading.
+    pub fn init(&mut self, path: &Path) -> Result<(), Box<dyn Error>> {
+        self.clear();
+        self.text_buffer = file_io::load(path)?;
+        self.init_line_offsets()?;
+        Ok(())
+    }
+
+    /// Clears the document content and resets state to empty.
+    pub fn clear(&mut self) {
+        self.line_offsets = vec![0];
+        self.text_buffer.clear();
     }
     
-    /// Given a line number, return string of that line's text
-    pub fn getline<'a>(&'a self, lineno: u64) -> Option<&'a str> {
+    /// Given a 0-based line number, returns a string slice of that line's text,
+    /// excluding the trailing newline character(s).
+    pub fn getline(&self, lineno: usize) -> Option<&str> {
         let num_lines = self.line_offsets.len();
-        let idx = lineno as usize;
-        
-        if idx >= num_lines {
+
+        if lineno >= num_lines {
             return None;
         }
 
-        let curr_start = self.line_offsets[idx];
-        let next_start = if idx + 1 < num_lines {
-            self.line_offsets[idx + 1]
-            } else {
-                self.text_buffer.len() as u64
-            };
+        let start_offset = self.line_offsets[lineno];
+        let end_offset = if lineno + 1 < num_lines {
+            self.line_offsets[lineno + 1]
+        } else {
+            self.text_buffer.len() // End of the buffer for the last line
+        };
 
-        if next_start < curr_start {
-            return None;
+        // Basic sanity check
+        if start_offset > end_offset || end_offset > self.text_buffer.len() {
+             eprintln!("getline error: Invalid offsets {}..{}", start_offset, end_offset); 
+             return None; // Indicates an internal error
         }
 
-        let line: &str = &self.text_buffer[curr_start as usize..next_start as usize];
-        Some(line)
+        let mut line_slice = &self.text_buffer[start_offset..end_offset];
+
+        // Trim trailing newline characters (\n or \r\n)
+        // Check for \n first, then \r
+        if line_slice.ends_with('\n') {
+            line_slice = &line_slice[..line_slice.len() - 1];
+        }
+        if line_slice.ends_with('\r') {
+            line_slice = &line_slice[..line_slice.len() - 1];
+        }
+
+        Some(line_slice)
     }
 
+    /// Returns the number of lines in the document.
     pub fn line_count(&self) -> usize {
         self.line_offsets.len()
     }
-    
+
+    /// Returns the total length of the text buffer in bytes.
+    pub fn len(&self) -> usize {
+        self.text_buffer.len()
+    }
+
+    /// Returns a reference to the entire text buffer.
+    pub fn get_content(&self) -> &str {
+        &self.text_buffer
+    }
 }
