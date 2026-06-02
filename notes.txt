@@ -1,0 +1,7 @@
+## (Connect to win VM to build target)
+ssh jesse@172.16.198.129
+
+net use X: \\192.168.1.9\Dev
+cd /d "X:\[00] CURRENT\win32-rust-texteditor/win32-texteditorcd /d "X:\[00] CURRENT\win32-rust-texteditor/win32-texteditor""
+
+cargo build --target=aarch64-pc-windows-msvc
